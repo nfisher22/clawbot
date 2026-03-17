@@ -1,0 +1,13 @@
+anthropic
+chromadb
+flask
+flask-cors
+hvac
+msal
+openpyxl
+openai
+pandas
+python-dotenv
+python-telegram-bot
+requests
+tavily-python
