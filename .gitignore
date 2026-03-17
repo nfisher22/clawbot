@@ -1,0 +1,25 @@
+# Secrets & credentials
+.env
+.env.save
+.env.*
+gmail_credentials.json
+token.json
+*.json.save
+
+# Editor temp files
+nano.*.save
+*.swp
+*.swo
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+venv/
+.venv/
+*.egg-info/
+
+# OS
+.DS_Store
+Thumbs.db
