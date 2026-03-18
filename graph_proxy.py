@@ -4,10 +4,12 @@ from flask_cors import CORS
 from datetime import datetime, timezone, timedelta
 from zoneinfo import ZoneInfo
 from dotenv import load_dotenv
+from vault_secrets import get_secrets
 
 EST = ZoneInfo('America/New_York')
 
 load_dotenv('/root/.env')
+get_secrets()  # overlay Vault secrets (falls back to /opt/clawbot/app/.env)
 
 app = Flask(__name__)
 CORS(app)
@@ -16,7 +18,6 @@ TENANT   = os.getenv('AZURE_TENANT_ID')
 CLIENT   = os.getenv('AZURE_CLIENT_ID')
 SECRET   = os.getenv('AZURE_CLIENT_SECRET')
 EMAIL    = os.getenv('MS_EMAIL', 'nfisher@peak10group.com')
-ANT_KEY  = os.getenv('ANTHROPIC_API_KEY')
 TRACY    = 'tracy@peak10group.com'
 
 def get_token():
@@ -115,7 +116,8 @@ def email():
 @app.route('/usage')
 def usage():
     try:
-        if not ANT_KEY:
+        ant_key = os.getenv('ANTHROPIC_API_KEY')
+        if not ant_key:
             return jsonify({'error': 'ANTHROPIC_API_KEY not configured'}), 200
         # Monthly window
         now = datetime.now(timezone.utc)
@@ -123,7 +125,7 @@ def usage():
         r = requests.get(
             'https://api.anthropic.com/v1/usage',
             headers={
-                'x-api-key':           ANT_KEY,
+                'x-api-key':           ant_key,
                 'anthropic-version':   '2023-06-01'
             },
             params={'start_time': month_start},
