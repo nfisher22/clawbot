@@ -1,0 +1,6 @@
+anyio
+anthropic
+claude-agent-sdk
+openpyxl
+python-docx
+python-pptx

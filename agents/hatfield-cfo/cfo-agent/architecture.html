@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mr Soul CFO — System Architecture</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Black+Ops+One&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:         #08080a;
+    --bg2:        #0f0f12;
+    --bg3:        #16161a;
+    --amber:      #e8a020;
+    --amber-glow: rgba(232,160,32,0.15);
+    --amber-dim:  #7a5410;
+    --gold:       #f5d485;
+    --text:       #c8a96e;
+    --text-dim:   #5a4828;
+    --green:      #45c084;
+    --border:     #242018;
+    --border-hi:  #3a3020;
+    --soul-glow:  rgba(232,160,32,0.25);
+    --font-mono:  'Share Tech Mono', monospace;
+    --font-disp:  'Black Ops One', cursive;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-mono);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 40px 24px 60px;
+    position: relative;
+    overflow-x: hidden;
+  }
+
+  /* Grid background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(232,160,32,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(232,160,32,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+  }
+
+  /* Scanlines */
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg, transparent, transparent 3px,
+      rgba(0,0,0,0.06) 3px, rgba(0,0,0,0.06) 4px
+    );
+    pointer-events: none;
+    z-index: 100;
+  }
+
+  header {
+    text-align: center;
+    margin-bottom: 48px;
+    animation: fade-in 0.6s ease both;
+  }
+
+  .header-label {
+    font-size: 10px;
+    letter-spacing: 0.35em;
+    color: var(--amber-dim);
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+
+  h1 {
+    font-family: var(--font-disp);
+    font-size: 28px;
+    color: var(--amber);
+    letter-spacing: 0.1em;
+    text-shadow: 0 0 30px rgba(232,160,32,0.5);
+  }
+
+  /* ── DIAGRAM ── */
+  .diagram {
+    width: 100%;
+    max-width: 1100px;
+    display: grid;
+    grid-template-columns: 200px 1fr 200px;
+    grid-template-rows: auto auto auto;
+    gap: 0;
+    align-items: center;
+    position: relative;
+  }
+
+  /* ── BOXES ── */
+  .box {
+    border: 1px solid var(--border-hi);
+    background: var(--bg2);
+    padding: 16px;
+    position: relative;
+    animation: fade-in 0.5s ease both;
+  }
+
+  .box-title {
+    font-family: var(--font-disp);
+    font-size: 11px;
+    letter-spacing: 0.15em;
+    color: var(--amber);
+    margin-bottom: 8px;
+  }
+
+  .box-sub {
+    font-size: 10px;
+    color: var(--text-dim);
+    letter-spacing: 0.1em;
+    line-height: 1.7;
+  }
+
+  /* INPUT COLUMN */
+  .inputs {
+    grid-column: 1;
+    grid-row: 1 / 4;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding-right: 0;
+    animation: slide-right 0.5s ease both;
+  }
+
+  .input-node {
+    border: 1px solid var(--border-hi);
+    background: var(--bg2);
+    padding: 12px 14px;
+    position: relative;
+    transition: border-color 0.2s, background 0.2s;
+    cursor: default;
+  }
+
+  .input-node:hover {
+    border-color: var(--amber-dim);
+    background: var(--bg3);
+  }
+
+  .input-node::after {
+    content: '→';
+    position: absolute;
+    right: -22px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--amber-dim);
+    font-size: 14px;
+  }
+
+  .node-label {
+    font-family: var(--font-disp);
+    font-size: 11px;
+    color: var(--gold);
+    letter-spacing: 0.08em;
+    margin-bottom: 2px;
+  }
+
+  .node-sub {
+    font-size: 9px;
+    color: var(--text-dim);
+    letter-spacing: 0.12em;
+  }
+
+  /* CENTER COLUMN */
+  .center {
+    grid-column: 2;
+    grid-row: 1 / 4;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0;
+    padding: 0 32px;
+    position: relative;
+  }
+
+  /* HATFIELD ORCHESTRATOR */
+  .hatfield-box {
+    width: 100%;
+    border: 1px solid var(--border-hi);
+    background: var(--bg2);
+    padding: 18px 20px;
+    position: relative;
+    animation: fade-in 0.5s 0.1s ease both;
+  }
+
+  .hatfield-box .box-title {
+    font-size: 13px;
+    margin-bottom: 10px;
+  }
+
+  .route-tags {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 8px;
+  }
+
+  .route-tag {
+    font-size: 9px;
+    border: 1px solid var(--border-hi);
+    padding: 2px 8px;
+    letter-spacing: 0.1em;
+    color: var(--text-dim);
+  }
+
+  .route-tag.financial {
+    border-color: var(--amber-dim);
+    color: var(--amber);
+  }
+
+  /* Arrow down from Hatfield to Mr Soul */
+  .arrow-down {
+    width: 2px;
+    height: 36px;
+    background: linear-gradient(to bottom, var(--amber-dim), var(--amber));
+    position: relative;
+    flex-shrink: 0;
+  }
+
+  .arrow-down::after {
+    content: '';
+    position: absolute;
+    bottom: -6px;
+    left: 50%;
+    transform: translateX(-50%);
+    border-left: 6px solid transparent;
+    border-right: 6px solid transparent;
+    border-top: 8px solid var(--amber);
+  }
+
+  .arrow-label {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 9px;
+    color: var(--amber-dim);
+    letter-spacing: 0.12em;
+    white-space: nowrap;
+  }
+
+  /* MR SOUL CFO — HERO BOX */
+  .soul-box {
+    width: 100%;
+    border: 2px solid var(--amber);
+    background: var(--bg);
+    padding: 24px;
+    position: relative;
+    box-shadow:
+      0 0 40px var(--soul-glow),
+      0 0 80px rgba(232,160,32,0.08),
+      inset 0 0 30px rgba(232,160,32,0.03);
+    animation: fade-in 0.6s 0.2s ease both, glow-pulse 3s 1s ease-in-out infinite;
+  }
+
+  @keyframes glow-pulse {
+    0%, 100% { box-shadow: 0 0 40px var(--soul-glow), 0 0 80px rgba(232,160,32,0.08), inset 0 0 30px rgba(232,160,32,0.03); }
+    50%       { box-shadow: 0 0 60px rgba(232,160,32,0.3), 0 0 120px rgba(232,160,32,0.12), inset 0 0 40px rgba(232,160,32,0.05); }
+  }
+
+  .soul-box::before {
+    content: 'PRIMARY AGENT';
+    position: absolute;
+    top: -10px;
+    left: 20px;
+    background: var(--bg);
+    padding: 0 8px;
+    font-size: 9px;
+    color: var(--amber);
+    letter-spacing: 0.25em;
+    border: 1px solid var(--amber);
+  }
+
+  .soul-name {
+    font-family: var(--font-disp);
+    font-size: 22px;
+    color: var(--amber);
+    text-shadow: 0 0 20px rgba(232,160,32,0.6);
+    letter-spacing: 0.08em;
+    margin-bottom: 4px;
+  }
+
+  .soul-role {
+    font-size: 10px;
+    color: var(--text-dim);
+    letter-spacing: 0.2em;
+    margin-bottom: 18px;
+  }
+
+  .capabilities {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  .cap {
+    border: 1px solid var(--border-hi);
+    padding: 8px 12px;
+    background: var(--bg2);
+    transition: border-color 0.2s;
+  }
+
+  .cap:hover { border-color: var(--amber-dim); }
+
+  .cap-name {
+    font-size: 10px;
+    color: var(--gold);
+    letter-spacing: 0.08em;
+    margin-bottom: 3px;
+  }
+
+  .cap-desc {
+    font-size: 9px;
+    color: var(--text-dim);
+    line-height: 1.5;
+  }
+
+  /* Arrow down from Mr Soul to outputs */
+  .arrow-right-group {
+    position: absolute;
+    right: -32px;
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    color: var(--amber-dim);
+    font-size: 18px;
+  }
+
+  /* OUTPUT COLUMN */
+  .outputs {
+    grid-column: 3;
+    grid-row: 1 / 4;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding-left: 0;
+    animation: slide-left 0.5s ease both;
+  }
+
+  .output-node {
+    border: 1px solid var(--border-hi);
+    background: var(--bg2);
+    padding: 12px 14px;
+    position: relative;
+    transition: border-color 0.2s, background 0.2s;
+    cursor: default;
+  }
+
+  .output-node:hover {
+    border-color: var(--green);
+    background: var(--bg3);
+  }
+
+  .output-node::before {
+    content: '←';
+    position: absolute;
+    left: -22px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--amber-dim);
+    font-size: 14px;
+  }
+
+  .output-node .node-label { color: var(--green); }
+
+  /* MONITORING BAR */
+  .monitoring {
+    grid-column: 1 / 4;
+    margin-top: 32px;
+    border: 1px solid var(--amber-dim);
+    background: var(--bg2);
+    padding: 14px 20px;
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    animation: fade-in 0.5s 0.4s ease both;
+    position: relative;
+  }
+
+  .monitoring::before {
+    content: 'MONITORING';
+    position: absolute;
+    top: -10px;
+    left: 20px;
+    background: var(--bg2);
+    padding: 0 8px;
+    font-size: 9px;
+    color: var(--amber-dim);
+    letter-spacing: 0.25em;
+  }
+
+  .monitor-icon {
+    font-size: 20px;
+    color: var(--amber);
+  }
+
+  .monitor-info { flex: 1; }
+
+  .monitor-name {
+    font-family: var(--font-disp);
+    font-size: 13px;
+    color: var(--amber);
+    letter-spacing: 0.1em;
+    margin-bottom: 2px;
+  }
+
+  .monitor-detail {
+    font-size: 10px;
+    color: var(--text-dim);
+  }
+
+  .monitor-stats {
+    display: flex;
+    gap: 20px;
+  }
+
+  .mstat {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+  }
+
+  .mstat-val {
+    font-family: var(--font-disp);
+    font-size: 14px;
+    color: var(--gold);
+  }
+
+  .mstat-lbl {
+    font-size: 9px;
+    color: var(--text-dim);
+    letter-spacing: 0.12em;
+  }
+
+  .live-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--green);
+    box-shadow: 0 0 8px var(--green);
+    animation: blink 1.6s ease-in-out infinite;
+    flex-shrink: 0;
+  }
+
+  @keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.15; }
+  }
+
+  /* CONNECTOR LINES (SVG overlay) */
+  .connector-svg {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    overflow: visible;
+  }
+
+  /* ANIMATIONS */
+  @keyframes fade-in {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes slide-right {
+    from { opacity: 0; transform: translateX(-16px); }
+    to   { opacity: 1; transform: translateX(0); }
+  }
+
+  @keyframes slide-left {
+    from { opacity: 0; transform: translateX(16px); }
+    to   { opacity: 1; transform: translateX(0); }
+  }
+
+  /* LEGEND */
+  .legend {
+    margin-top: 32px;
+    display: flex;
+    gap: 24px;
+    font-size: 10px;
+    color: var(--text-dim);
+    letter-spacing: 0.1em;
+    animation: fade-in 0.5s 0.5s ease both;
+  }
+
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .legend-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-label">System Architecture</div>
+  <h1>MR SOUL CFO AGENT</h1>
+</header>
+
+<div class="diagram">
+
+  <!-- INPUTS -->
+  <div class="inputs">
+    <div class="input-node" style="animation-delay:0.05s">
+      <div class="node-label">TELEGRAM</div>
+      <div class="node-sub">via ClawBot · /cfo command</div>
+    </div>
+    <div class="input-node" style="animation-delay:0.1s">
+      <div class="node-label">GMAIL</div>
+      <div class="node-sub">nfisher2@gmail.com · personal</div>
+    </div>
+    <div class="input-node" style="animation-delay:0.15s">
+      <div class="node-label">OUTLOOK</div>
+      <div class="node-sub">professional work email</div>
+    </div>
+    <div class="input-node" style="animation-delay:0.2s">
+      <div class="node-label">CLI / TERMINAL</div>
+      <div class="node-sub">python3 hatfield.py "task"</div>
+    </div>
+  </div>
+
+  <!-- CENTER -->
+  <div class="center">
+
+    <!-- HATFIELD -->
+    <div class="hatfield-box">
+      <div class="box-title">HATFIELD ORCHESTRATOR</div>
+      <div class="box-sub">Receives all incoming tasks and routes by intent</div>
+      <div class="route-tags">
+        <span class="route-tag financial">financial tasks → Mr Soul CFO</span>
+        <span class="route-tag">general tasks → direct</span>
+      </div>
+    </div>
+
+    <!-- Arrow down -->
+    <div class="arrow-down" style="position:relative;">
+      <span class="arrow-label">financial tasks</span>
+    </div>
+
+    <!-- MR SOUL CFO -->
+    <div class="soul-box">
+      <div class="soul-name">MR SOUL CFO</div>
+      <div class="soul-role">EXPERT FINANCIAL AGENT · claude-opus-4-6</div>
+      <div class="capabilities">
+        <div class="cap">
+          <div class="cap-name">FINANCIAL ANALYSIS</div>
+          <div class="cap-desc">P&amp;L · budgets · burn rate · KPIs · variance</div>
+        </div>
+        <div class="cap">
+          <div class="cap-name">REPORT GENERATION</div>
+          <div class="cap-desc">Board memos · investor summaries · exec briefs</div>
+        </div>
+        <div class="cap">
+          <div class="cap-name">EMAIL DRAFTING</div>
+          <div class="cap-desc">Investor updates · vendor comms · team announcements</div>
+        </div>
+        <div class="cap">
+          <div class="cap-name">DATA PROCESSING</div>
+          <div class="cap-desc">CSV · XLSX · pandas · openpyxl · web research</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- OUTPUTS -->
+  <div class="outputs">
+    <div class="output-node" style="animation-delay:0.05s">
+      <div class="node-label">TELEGRAM REPLY</div>
+      <div class="node-sub">result sent back to chat</div>
+    </div>
+    <div class="output-node" style="animation-delay:0.1s">
+      <div class="node-label">EMAIL REPLY</div>
+      <div class="node-sub">Gmail · Outlook · drafts</div>
+    </div>
+    <div class="output-node" style="animation-delay:0.15s">
+      <div class="node-label">REPORTS TO DISK</div>
+      <div class="node-sub">./reports/*.md · summaries</div>
+    </div>
+    <div class="output-node" style="animation-delay:0.2s">
+      <div class="node-label">EMAIL DRAFTS</div>
+      <div class="node-sub">./drafts/*.md · ready to send</div>
+    </div>
+  </div>
+
+  <!-- MONITORING -->
+  <div class="monitoring">
+    <div class="live-dot"></div>
+    <div class="monitor-icon">◈</div>
+    <div class="monitor-info">
+      <div class="monitor-name">MISSION CONTROL</div>
+      <div class="monitor-detail">localhost:8000 · session history · token usage · cost tracking · auto-refresh 30s</div>
+    </div>
+    <div class="monitor-stats">
+      <div class="mstat">
+        <div class="mstat-val" id="stat-sessions">—</div>
+        <div class="mstat-lbl">Sessions</div>
+      </div>
+      <div class="mstat">
+        <div class="mstat-val" id="stat-activity">—</div>
+        <div class="mstat-lbl">Last Active</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="legend">
+  <div class="legend-item">
+    <div class="legend-dot" style="background:var(--amber);box-shadow:0 0 6px var(--amber)"></div>
+    PRIMARY AGENT
+  </div>
+  <div class="legend-item">
+    <div class="legend-dot" style="background:var(--text-dim)"></div>
+    INPUT / OUTPUT NODE
+  </div>
+  <div class="legend-item">
+    <div class="legend-dot" style="background:var(--green);box-shadow:0 0 6px var(--green)"></div>
+    LIVE MONITORING
+  </div>
+</div>
+
+<script>
+  // Pull live stats from Mission Control if it's running
+  async function loadStats() {
+    try {
+      const r = await fetch('http://localhost:8000/api/stats', { signal: AbortSignal.timeout(2000) });
+      const d = await r.json();
+      document.getElementById('stat-sessions').textContent = d.total_sessions ?? '—';
+      if (d.latest_activity_ms) {
+        const diff = Date.now() - d.latest_activity_ms;
+        const m = Math.floor(diff / 60000);
+        const h = Math.floor(m / 60);
+        document.getElementById('stat-activity').textContent =
+          h > 0 ? h + 'h ago' : m > 0 ? m + 'm ago' : 'just now';
+      }
+    } catch { /* Mission Control not running */ }
+  }
+  loadStats();
+</script>
+
+</body>
+</html>
