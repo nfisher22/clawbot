@@ -317,7 +317,7 @@ async def run_task(task: str, working_dir: str) -> None:
             system_prompt=CFO_SYSTEM_PROMPT,
             model="claude-opus-4-6",
             allowed_tools=["Read", "Write", "Edit", "Bash", "Glob", "Grep", "WebSearch"],
-            permission_mode="bypassPermissions",
+            permission_mode="default",
             max_turns=40,
         ),
     ):

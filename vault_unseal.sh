@@ -1,5 +1,5 @@
 #!/bin/bash
-export VAULT_ADDR='http://127.0.0.1:8200'
+export VAULT_ADDR='https://127.0.0.1:8200'
 
 # UNSEAL_KEY must be set in the environment or loaded from a secured file outside this repo.
 # Never hardcode unseal keys in source files.

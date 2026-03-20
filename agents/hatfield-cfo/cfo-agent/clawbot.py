@@ -74,7 +74,7 @@ async def run_mr_soul(task: str) -> str:
             model="claude-opus-4-6",
             allowed_tools=["Read", "Write", "Edit", "Bash", "Glob", "Grep", "WebSearch"],
             agents={"mr-soul-cfo": MR_SOUL_CFO},
-            permission_mode="bypassPermissions",
+            permission_mode="default",
 
             max_turns=40,
         ),
@@ -95,7 +95,7 @@ async def run_hatfield(task: str) -> str:
             model="claude-opus-4-6",
             allowed_tools=["Read", "Write", "Edit", "Bash", "Glob", "Grep", "WebSearch", "Agent"],
             agents={"mr-soul-cfo": MR_SOUL_CFO},
-            permission_mode="bypassPermissions",
+            permission_mode="default",
 
             max_turns=60,
         ),

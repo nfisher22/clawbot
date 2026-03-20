@@ -3,7 +3,7 @@ import subprocess
 import hvac
 from dotenv import load_dotenv
 
-VAULT_ADDR = "http://127.0.0.1:8200"
+VAULT_ADDR = "https://127.0.0.1:8200"
 VAULT_TOKEN = os.getenv("VAULT_TOKEN")
 SECRET_PATH = "clawbot/secrets"
 
