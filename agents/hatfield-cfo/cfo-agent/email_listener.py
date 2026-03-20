@@ -253,7 +253,12 @@ async def poll_account(
         for e in emails:
             ts = datetime.now().strftime("%H:%M:%S")
             print(f"[{ts}] [{label}] Task from {e['sender']}: {e['task'][:60]}...")
-            result, new_files = await run_mr_soul(e["task"])
+            try:
+                result, new_files = await run_mr_soul(e["task"])
+            except Exception as agent_err:
+                print(f"[{ts}] [{label}] Agent error: {agent_err}")
+                result = f"Mr Soul CFO encountered an error while processing your request:\n\n{agent_err}\n\nPlease try again or contact support."
+                new_files = []
 
             if new_files:
                 print(f"[{ts}] [{label}] Attaching {len(new_files)} file(s): {[f.name for f in new_files]}")
