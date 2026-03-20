@@ -26,8 +26,9 @@ from agent import MR_SOUL_CFO
 from claude_agent_sdk import query, ClaudeAgentOptions, ResultMessage
 
 # ── CONFIG ────────────────────────────────────────────────────────────────────
-TELEGRAM_TOKEN  = "8755322526:AAGi3N1Es4TVTpV3CKfZY_yv6gE2Wye2cXo"
-ALLOWED_CHAT_ID = "8647502718"
+import os as _os
+TELEGRAM_TOKEN  = _os.environ["TELEGRAM_TOKEN"]   # required — set in Vault / .env / systemd
+ALLOWED_CHAT_ID = _os.environ["TELEGRAM_CHAT_ID"]  # required — set in Vault / .env / systemd
 CFO_WORKING_DIR = str(Path(__file__).parent)
 
 TELEGRAM_API = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}"

@@ -1,5 +1,5 @@
 import os, requests, subprocess
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request, abort
 from flask_cors import CORS
 from datetime import datetime, timezone, timedelta
 from zoneinfo import ZoneInfo
@@ -10,7 +10,9 @@ EST = ZoneInfo('America/New_York')
 load_dotenv('/root/.env')
 
 app = Flask(__name__)
-CORS(app)
+# Restrict CORS to the local dashboard origin only; update PROXY_ALLOWED_ORIGIN in .env if needed
+_ALLOWED_ORIGIN = os.getenv('PROXY_ALLOWED_ORIGIN', 'http://localhost:3000')
+CORS(app, origins=[_ALLOWED_ORIGIN])
 
 TENANT   = os.getenv('AZURE_TENANT_ID')
 CLIENT   = os.getenv('AZURE_CLIENT_ID')
@@ -18,6 +20,17 @@ SECRET   = os.getenv('AZURE_CLIENT_SECRET')
 EMAIL    = os.getenv('MS_EMAIL', 'nfisher@peak10group.com')
 ANT_KEY  = os.getenv('ANTHROPIC_API_KEY')
 TRACY    = 'tracy@peak10group.com'
+
+# Internal API key to protect proxy endpoints — set PROXY_API_KEY in Vault / .env
+_PROXY_API_KEY = os.getenv('PROXY_API_KEY', '')
+
+def _require_auth():
+    """Abort with 401 if the request does not carry the correct bearer token."""
+    if not _PROXY_API_KEY:
+        return  # key not configured — proxy operates unprotected (dev mode)
+    auth = request.headers.get('Authorization', '')
+    if not auth.startswith('Bearer ') or auth[7:] != _PROXY_API_KEY:
+        abort(401)
 
 def get_token():
     r = requests.post(
@@ -39,6 +52,7 @@ def health():
 
 @app.route('/calendar')
 def calendar():
+    _require_auth()
     try:
         token = get_token()
         now   = datetime.now(EST)
@@ -85,6 +99,7 @@ def calendar():
 
 @app.route('/email')
 def email():
+    _require_auth()
     try:
         token = get_token()
         since = (datetime.now(timezone.utc) - timedelta(hours=24)).isoformat()
@@ -114,6 +129,7 @@ def email():
 
 @app.route('/usage')
 def usage():
+    _require_auth()
     try:
         if not ANT_KEY:
             return jsonify({'error': 'ANTHROPIC_API_KEY not configured'}), 200
@@ -144,6 +160,7 @@ def usage():
 
 @app.route('/history')
 def history():
+    _require_auth()
     try:
         result = subprocess.run(
             ['journalctl', '-u', 'clawbot', '--no-pager', '-n', '300', '--output=short-iso'],
@@ -182,6 +199,7 @@ def history():
 
 @app.route('/tracy')
 def tracy():
+    _require_auth()
     try:
         token = get_token()
         since = (datetime.now(timezone.utc) - timedelta(days=14)).isoformat()

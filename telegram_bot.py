@@ -26,6 +26,8 @@ from task_checkpoint import add_task, complete_task, get_pending_tasks, update_t
 get_secrets()
 load_dotenv()  # fallback
 
+ALLOWED_USER_ID = int(os.getenv("TELEGRAM_CHAT_ID", "0"))  # set in Vault / .env; 0 means unset
+
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 MODEL_NAME = os.getenv("MODEL_NAME", "gpt-4o-mini")
 EMBED_MODEL = os.getenv("EMBED_MODEL", "text-embedding-3-small")
@@ -539,14 +541,14 @@ async def handle_message(update, context):
         await update.message.reply_text(output)
     except Exception as e:
         audit("ERROR", "telegram-bot", f"Exception: {str(e)}")
-        await update.message.reply_text("Error: " + str(e))
+        await update.message.reply_text("Sorry, something went wrong. Please try again.")
 
 
 
 
 async def cmd_meetings(update, context):
     user_id = update.effective_user.id
-    if user_id != 8647502718:
+    if ALLOWED_USER_ID and user_id != ALLOWED_USER_ID:
         await update.message.reply_text("Unauthorized.")
         return
     args = context.args
@@ -572,7 +574,7 @@ async def cmd_meetings(update, context):
 
 async def cmd_task(update, context):
     user_id = update.effective_user.id
-    if user_id != 8647502718:
+    if ALLOWED_USER_ID and user_id != ALLOWED_USER_ID:
         await update.message.reply_text("Unauthorized.")
         return
     args = context.args
@@ -622,7 +624,7 @@ CORRECTIONS_LOG = "/opt/clawbot/logs/corrections.log"
 
 async def cmd_correct(update, context):
     user_id = update.effective_user.id
-    if user_id != 8647502718:
+    if ALLOWED_USER_ID and user_id != ALLOWED_USER_ID:
         await update.message.reply_text("Unauthorized.")
         return
     correction_text = " ".join(context.args) if context.args else ""
