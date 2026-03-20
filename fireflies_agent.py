@@ -135,7 +135,145 @@ def save_transcripts_to_memory(transcripts):
         saved += 1
     return saved
 
+def save_transcript_docx(transcript):
+    """Save full transcript + summary to a .docx file. Returns the file path."""
+    import re
+    from pathlib import Path
+    from docx import Document
+    from docx.enum.text import WD_ALIGN_PARAGRAPH
+
+    title = transcript.get("title", "Untitled")
+    raw_date = transcript.get("date", "")
+    try:
+        date_str = datetime.fromtimestamp(raw_date).strftime("%Y-%m-%d") if isinstance(raw_date, (int, float)) else str(raw_date)[:10]
+    except Exception:
+        date_str = str(raw_date)[:10]
+
+    summary = transcript.get("summary", {}) or {}
+    overview = summary.get("overview", "No summary available.")
+    action_items = summary.get("action_items", []) or []
+    sentences = transcript.get("sentences", []) or []
+
+    doc = Document()
+
+    heading = doc.add_heading(title, 0)
+    heading.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    doc.add_paragraph(f"Date: {date_str}")
+    doc.add_paragraph("")
+
+    doc.add_heading("Summary", level=1)
+    doc.add_paragraph(overview)
+
+    if action_items:
+        doc.add_heading("Action Items", level=1)
+        for item in (action_items if isinstance(action_items, list) else action_items.strip().split("\n")):
+            item = item.strip(" -•\n")
+            if item:
+                doc.add_paragraph(item, style="List Bullet")
+
+    if sentences:
+        doc.add_heading("Full Transcript", level=1)
+        current_speaker = None
+        current_para = None
+        for s in sentences:
+            speaker = s.get("speaker_name", "Unknown")
+            text = s.get("text", "").strip()
+            if not text:
+                continue
+            if speaker != current_speaker:
+                current_para = doc.add_paragraph()
+                run = current_para.add_run(f"{speaker}: ")
+                run.bold = True
+                current_para.add_run(text)
+                current_speaker = speaker
+            else:
+                current_para.add_run(f" {text}")
+
+    output_dir = Path("/opt/clawbot/transcripts")
+    output_dir.mkdir(parents=True, exist_ok=True)
+    safe_title = re.sub(r"[^\w\s-]", "", title)[:50].strip().replace(" ", "-")
+    filepath = output_dir / f"{date_str}-{safe_title}.docx"
+    doc.save(str(filepath))
+    audit("INFO", "fireflies-agent", f"Saved transcript docx: {filepath}")
+    return str(filepath)
+
+
+def send_transcript_email(filepath, transcript_title, date_str):
+    """Email transcript docx from HatfieldFisher1013@gmail.com to nfisher@peak10group.com."""
+    import smtplib
+    from email.mime.multipart import MIMEMultipart
+    from email.mime.text import MIMEText
+    from email.mime.base import MIMEBase
+    from email import encoders
+
+    GMAIL_USER = "HatfieldFisher1013@gmail.com"
+    GMAIL_APP_PASSWORD = os.getenv("GMAIL_APP_PASSWORD")
+    TO_EMAIL = "nfisher@peak10group.com"
+
+    if not GMAIL_APP_PASSWORD:
+        audit("ERROR", "fireflies-agent", "GMAIL_APP_PASSWORD not set — skipping email")
+        return "⚠️ Email skipped: GMAIL_APP_PASSWORD not configured in vault"
+
+    msg = MIMEMultipart()
+    msg["From"] = GMAIL_USER
+    msg["To"] = TO_EMAIL
+    msg["Subject"] = f"Meeting Transcript: {transcript_title} ({date_str})"
+    msg.attach(MIMEText(
+        f"Attached is the full transcript and summary for:\n\n{transcript_title}\nDate: {date_str}",
+        "plain"
+    ))
+
+    with open(filepath, "rb") as f:
+        part = MIMEBase("application", "octet-stream")
+        part.set_payload(f.read())
+    encoders.encode_base64(part)
+    part.add_header("Content-Disposition", f'attachment; filename="{os.path.basename(filepath)}"')
+    msg.attach(part)
+
+    try:
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+            server.login(GMAIL_USER, GMAIL_APP_PASSWORD)
+            server.sendmail(GMAIL_USER, TO_EMAIL, msg.as_string())
+        audit("SUCCESS", "fireflies-agent", f"Email sent: {transcript_title}")
+        return f"✅ Emailed to {TO_EMAIL}"
+    except Exception as e:
+        audit("ERROR", "fireflies-agent", f"Email failed: {e}")
+        return f"❌ Email failed: {e}"
+
+
+def run_transcript_pipeline(limit=5):
+    """Full pipeline: fetch transcripts → save docx → email each one."""
+    transcripts = get_recent_transcripts(limit)
+    if not transcripts:
+        return "No transcripts found in Fireflies."
+
+    results = []
+    for t in transcripts:
+        title = t.get("title", "Untitled")
+        raw_date = t.get("date", "")
+        try:
+            date_str = datetime.fromtimestamp(raw_date).strftime("%Y-%m-%d") if isinstance(raw_date, (int, float)) else str(raw_date)[:10]
+        except Exception:
+            date_str = str(raw_date)[:10]
+
+        # Fetch full transcript with sentences
+        detail = get_transcript_detail(t["id"])
+        full_transcript = {**t, **(detail if detail and not detail.get("error") else {})}
+
+        # Save docx
+        filepath = save_transcript_docx(full_transcript)
+
+        # Save to memory
+        save_transcripts_to_memory([full_transcript])
+
+        # Email
+        email_result = send_transcript_email(filepath, title, date_str)
+
+        results.append(f"📄 *{title}* ({date_str})\n   Saved: {filepath}\n   {email_result}")
+
+    return "\n\n".join(results)
+
+
 if __name__ == "__main__":
-    print("Testing Fireflies connection...")
-    transcripts = get_recent_transcripts(3)
-    print(format_transcripts(transcripts))
+    print("Testing Fireflies pipeline...")
+    print(run_transcript_pipeline(3))
