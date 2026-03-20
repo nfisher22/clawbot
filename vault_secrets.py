@@ -7,6 +7,10 @@ VAULT_ADDR = "https://127.0.0.1:8200"
 VAULT_TOKEN = os.getenv("VAULT_TOKEN")
 SECRET_PATH = "clawbot/secrets"
 
+# Required secrets at SECRET_PATH (add these to Vault or .env):
+#   AGENTMAIL_API_KEY          — AgentMail API key (https://agentmail.to)
+#   AGENTMAIL_INBOX_USERNAME   — (optional) inbox prefix, defaults to "clawbot"
+
 def get_secrets():
     try:
         client = hvac.Client(url=VAULT_ADDR, token=VAULT_TOKEN)

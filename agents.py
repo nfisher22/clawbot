@@ -1,4 +1,5 @@
 import os
+import re
 import requests
 import msal
 from datetime import datetime, timezone
@@ -136,6 +137,97 @@ def brain_agent(query):
     audit("SUCCESS", "brain-agent", "Response generated")
     return result
 
+# ── AgentMail Send Agent ──────────────────────────────────────────────────────
+def agentmail_send_agent(query):
+    """
+    Parse a natural-language 'send email to X about Y' query, compose the
+    message with GPT, and deliver it via ClawBot's AgentMail inbox.
+
+    ClawBot's @agentmail.to address is used for all agent-originated outbound
+    mail.  Nate's Outlook inbox is never touched for sending here.
+    """
+    audit("INFO", "agentmail-send", f"Query: {query[:80]}")
+
+    # ── Extract recipient from query ──────────────────────────────────────────
+    # Patterns: "email john@x.com about ...", "send to foo@bar.com re ..."
+    email_match = re.search(
+        r'(?:to|email|send to)\s+([\w.+-]+@[\w.-]+\.[a-zA-Z]{2,})',
+        query, re.IGNORECASE
+    )
+    recipient = email_match.group(1) if email_match else None
+
+    if not recipient:
+        audit("WARN", "agentmail-send", "No recipient found in query")
+        return ("I couldn't find a recipient email address in your request. "
+                "Please include the address, e.g. 'send email to person@example.com about …'")
+
+    # ── Compose subject & body via LLM ────────────────────────────────────────
+    compose_prompt = (
+        "You are ClawBot, the AI Chief of Staff for Nathan Fisher at Peak 10 Group. "
+        "Draft a short, professional email based on this instruction:\n\n"
+        f"{query}\n\n"
+        "Reply in JSON with exactly two keys: \"subject\" (string) and \"body\" (string, plain text). "
+        "Do NOT include a signature in the body."
+    )
+    raw = chat_with_fallback([{"role": "user", "content": compose_prompt}])
+
+    # Parse JSON from LLM response
+    try:
+        import json
+        json_match = re.search(r'\{.*\}', raw, re.DOTALL)
+        parsed = json.loads(json_match.group(0)) if json_match else {}
+        subject = parsed.get("subject", "Message from ClawBot")
+        body = parsed.get("body", raw)
+    except Exception:
+        subject = "Message from ClawBot"
+        body = raw
+
+    # Append signature
+    signature = "\n\nSent via ClawBot on behalf of Nathan D. Fisher\nPeak 10 Group | www.peak10group.com"
+    full_body = body + signature
+
+    # ── Send via AgentMail ────────────────────────────────────────────────────
+    try:
+        from agentmail_client import send_email, get_agent_inbox_id
+        send_email(to=recipient, subject=subject, text=full_body, labels=["clawbot-sent"])
+        agent_inbox = get_agent_inbox_id()
+        audit("SUCCESS", "agentmail-send", f"Sent to {recipient}: {subject}")
+        return (f"Email sent to **{recipient}** via ClawBot's agent inbox ({agent_inbox}).\n"
+                f"**Subject:** {subject}")
+    except Exception as e:
+        audit("ERROR", "agentmail-send", f"Send failed: {e}")
+        return f"Failed to send email: {e}"
+
+
+# ── AgentMail Inbox Agent ─────────────────────────────────────────────────────
+def agentmail_inbox_agent(query):
+    """List or read messages received in ClawBot's own @agentmail.to inbox."""
+    audit("INFO", "agentmail-inbox", f"Query: {query[:80]}")
+    try:
+        from agentmail_client import list_messages, get_agent_inbox_id
+        messages = list_messages(limit=5)
+        agent_inbox = get_agent_inbox_id()
+        if not messages:
+            return f"No messages in ClawBot's agent inbox ({agent_inbox})."
+        context = f"ClawBot inbox: {agent_inbox}\n\n"
+        for m in messages:
+            context += (f"FROM: {m.get('from_', 'unknown')}\n"
+                        f"SUBJECT: {m.get('subject', '')}\n"
+                        f"DATE: {m.get('created_at', '')}\n"
+                        f"BODY: {(m.get('text') or '')[:300]}\n---\n")
+        chat_messages = [
+            {"role": "system", "content": ("You are ClawBot. Summarise or answer questions about "
+                                           "messages received in the agent inbox.\n\n" + context)},
+            {"role": "user", "content": query}
+        ]
+        result = chat_with_fallback(chat_messages)
+        audit("SUCCESS", "agentmail-inbox", "Response generated")
+        return result
+    except Exception as e:
+        audit("ERROR", "agentmail-inbox", f"Failed: {e}")
+        return f"Could not read agent inbox: {e}"
+
+
 # ── Router ────────────────────────────────────────────────────────────────────
 def route(query):
     q = query.lower()
@@ -172,6 +264,14 @@ def route(query):
         from fathom_agent import get_recent_meetings, format_meetings
         meetings = get_recent_meetings(5)
         return "fathom", format_meetings(meetings)
+    # Agent-originated outbound email via AgentMail (ClawBot's own inbox)
+    if any(k in q for k in ["send email to", "send a message to", "send an email to",
+                              "email to ", "draft and send", "compose and send"]):
+        return "agentmail-send", agentmail_send_agent(query)
+    # Check ClawBot's own AgentMail inbox
+    if any(k in q for k in ["agent inbox", "clawbot inbox", "agentmail inbox",
+                              "replies to clawbot", "messages for clawbot"]):
+        return "agentmail-inbox", agentmail_inbox_agent(query)
     if any(k in q for k in ["email", "inbox", "message from", "did i get", "unread", "mail"]):
         return "email", email_agent(query)
     elif any(k in q for k in ["calendar", "schedule", "meeting", "appointment", "agenda", "when is my"]):
