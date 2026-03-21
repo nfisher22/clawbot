@@ -89,6 +89,25 @@ def search_files(query):
     audit("INFO", "onedrive-agent", f"Search for '{query}' returned {len(items)} results")
     return "\n---\n".join(output)
 
+def save_binary_file(filename, file_bytes, folder="Meeting Notes"):
+    """Upload binary file (e.g. .docx) to OneDrive. Returns (web_url, error)."""
+    token = get_graph_token()
+    if not token:
+        return None, "Could not authenticate with Microsoft."
+    headers = {
+        "Authorization": "Bearer " + token,
+        "Content-Type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    }
+    url = f"https://graph.microsoft.com/v1.0/users/{MS_USER_EMAIL}/drive/root:/{folder}/{filename}:/content"
+    response = requests.put(url, headers=headers, data=file_bytes)
+    if response.status_code in [200, 201]:
+        item = response.json()
+        web_url = item.get("webUrl", f"OneDrive:/{folder}/{filename}")
+        audit("SUCCESS", "onedrive-agent", f"Uploaded: {folder}/{filename}")
+        return web_url, None
+    audit("ERROR", "onedrive-agent", f"Upload failed: {response.status_code} {response.text[:200]}")
+    return None, f"Failed: {response.status_code} {response.text[:100]}"
+
 def save_daily_summary():
     from pathlib import Path
     today = datetime.now().strftime("%Y-%m-%d")

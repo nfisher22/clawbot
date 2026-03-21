@@ -169,9 +169,8 @@ def route(query):
         from fireflies_agent import run_transcript_pipeline
         return "fireflies", run_transcript_pipeline(5)
     if any(k in q for k in ["fathom", "fathom meeting", "fathom video", "fathom summary"]):
-        from fathom_agent import get_recent_meetings, format_meetings
-        meetings = get_recent_meetings(5)
-        return "fathom", format_meetings(meetings)
+        from fathom_agent import run_fathom_pipeline
+        return "fathom", run_fathom_pipeline(5)
     if any(k in q for k in ["email", "inbox", "message from", "did i get", "unread", "mail"]):
         return "email", email_agent(query)
     elif any(k in q for k in ["calendar", "schedule", "meeting", "appointment", "agenda", "when is my"]):

@@ -45,6 +45,10 @@ def get_recent_transcripts(limit=5):
                 action_items
             }
             organizer_email
+            meeting_attendees {
+                displayName
+                email
+            }
         }
     }
     """ % limit
@@ -135,12 +139,37 @@ def save_transcripts_to_memory(transcripts):
         saved += 1
     return saved
 
+def save_transcript_to_onedrive(transcript):
+    """Save verbatim transcript (sentences only) to OneDrive/Meetings/ as plain text."""
+    from onedrive_agent import save_file
+    title = (transcript.get("title", "Untitled")).replace("/", "-")
+    raw_date = transcript.get("date", "")
+    try:
+        if isinstance(raw_date, (int, float)):
+            date_str = datetime.fromtimestamp(raw_date).strftime("%Y-%m-%d")
+        else:
+            date_str = str(raw_date)[:10]
+    except Exception:
+        date_str = str(raw_date)[:10]
+    sentences = transcript.get("sentences", []) or []
+
+    lines = []
+    for s in sentences:
+        speaker = s.get("speaker_name", "Unknown")
+        text = (s.get("text") or "").strip()
+        if text:
+            lines.append(f"{speaker}: {text}")
+
+    content = "\n\n".join(lines) if lines else "(No transcript available)"
+    safe_title = title[:50].replace(" ", "-")
+    filename = f"{date_str}-{safe_title}.txt"
+    result = save_file(filename, content, folder="Meetings")
+    audit("INFO", "fireflies-agent", f"Verbatim transcript saved to OneDrive/Meetings: {filename}")
+    return result
+
 def save_transcript_docx(transcript):
-    """Save full transcript + summary to a .docx file. Returns the file path."""
-    import re
-    from pathlib import Path
-    from docx import Document
-    from docx.enum.text import WD_ALIGN_PARAGRAPH
+    """Save Peak 10 format meeting notes .docx. Returns the file path."""
+    from transcript_formatter import save_formatted_docx
 
     title = transcript.get("title", "Untitled")
     raw_date = transcript.get("date", "")
@@ -150,92 +179,94 @@ def save_transcript_docx(transcript):
         date_str = str(raw_date)[:10]
 
     summary = transcript.get("summary", {}) or {}
-    overview = summary.get("overview", "No summary available.")
+    summary_text = summary.get("overview", "")
     action_items = summary.get("action_items", []) or []
+
+    # Build attendees string
+    attendees = transcript.get("meeting_attendees", []) or []
+    if attendees:
+        attendees_str = ", ".join(
+            a.get("displayName") or a.get("email", "") for a in attendees if a
+        )
+    else:
+        attendees_str = transcript.get("organizer_email", "")
+
+    # Fireflies uses 'sentences' for transcript; map to common format
     sentences = transcript.get("sentences", []) or []
+    utterances = [{"speaker": s.get("speaker_name", "Unknown"), "text": s.get("text", "")} for s in sentences]
 
-    doc = Document()
-
-    heading = doc.add_heading(title, 0)
-    heading.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    doc.add_paragraph(f"Date: {date_str}")
-    doc.add_paragraph("")
-
-    doc.add_heading("Summary", level=1)
-    doc.add_paragraph(overview)
-
-    if action_items:
-        doc.add_heading("Action Items", level=1)
-        for item in (action_items if isinstance(action_items, list) else action_items.strip().split("\n")):
-            item = item.strip(" -•\n")
-            if item:
-                doc.add_paragraph(item, style="List Bullet")
-
-    if sentences:
-        doc.add_heading("Full Transcript", level=1)
-        current_speaker = None
-        current_para = None
-        for s in sentences:
-            speaker = s.get("speaker_name", "Unknown")
-            text = s.get("text", "").strip()
-            if not text:
-                continue
-            if speaker != current_speaker:
-                current_para = doc.add_paragraph()
-                run = current_para.add_run(f"{speaker}: ")
-                run.bold = True
-                current_para.add_run(text)
-                current_speaker = speaker
-            else:
-                current_para.add_run(f" {text}")
-
-    output_dir = Path("/opt/clawbot/transcripts")
-    output_dir.mkdir(parents=True, exist_ok=True)
-    safe_title = re.sub(r"[^\w\s-]", "", title)[:50].strip().replace(" ", "-")
-    filepath = output_dir / f"{date_str}-{safe_title}.docx"
-    doc.save(str(filepath))
-    audit("INFO", "fireflies-agent", f"Saved transcript docx: {filepath}")
-    return str(filepath)
+    return save_formatted_docx(
+        title=title,
+        date_str=date_str,
+        attendees_str=attendees_str,
+        summary_text=summary_text,
+        action_items_raw=action_items,
+        utterances=utterances,
+        source_tag="fireflies-agent"
+    )
 
 
-def send_transcript_email(filepath, transcript_title, date_str):
-    """Email transcript docx from HatfieldFisher1013@gmail.com to nfisher@peak10group.com."""
-    import smtplib
-    from email.mime.multipart import MIMEMultipart
-    from email.mime.text import MIMEText
-    from email.mime.base import MIMEBase
-    from email import encoders
+def send_transcript_email(file_bytes, filename, transcript_title, date_str):
+    """Email formatted meeting notes .docx as attachment via Microsoft Graph API."""
+    import base64
+    import msal
 
-    GMAIL_USER = "HatfieldFisher1013@gmail.com"
-    GMAIL_APP_PASSWORD = os.getenv("GMAIL_APP_PASSWORD")
+    AZURE_CLIENT_ID = os.getenv("AZURE_CLIENT_ID")
+    AZURE_TENANT_ID = os.getenv("AZURE_TENANT_ID")
+    AZURE_CLIENT_SECRET = os.getenv("AZURE_CLIENT_SECRET")
+    MS_USER_EMAIL = os.getenv("MS_USER_EMAIL", "nfisher@peak10group.com")
     TO_EMAIL = "nfisher@peak10group.com"
 
-    if not GMAIL_APP_PASSWORD:
-        audit("ERROR", "fireflies-agent", "GMAIL_APP_PASSWORD not set — skipping email")
-        return "⚠️ Email skipped: GMAIL_APP_PASSWORD not configured in vault"
+    if not all([AZURE_CLIENT_ID, AZURE_TENANT_ID, AZURE_CLIENT_SECRET]):
+        audit("ERROR", "fireflies-agent", "Azure credentials missing — skipping email")
+        return "⚠️ Email skipped: Azure credentials not configured"
 
-    msg = MIMEMultipart()
-    msg["From"] = GMAIL_USER
-    msg["To"] = TO_EMAIL
-    msg["Subject"] = f"Meeting Transcript: {transcript_title} ({date_str})"
-    msg.attach(MIMEText(
-        f"Attached is the full transcript and summary for:\n\n{transcript_title}\nDate: {date_str}",
-        "plain"
-    ))
-
-    with open(filepath, "rb") as f:
-        part = MIMEBase("application", "octet-stream")
-        part.set_payload(f.read())
-    encoders.encode_base64(part)
-    part.add_header("Content-Disposition", f'attachment; filename="{os.path.basename(filepath)}"')
-    msg.attach(part)
+    if not file_bytes:
+        return "⚠️ Email skipped: no file bytes available"
 
     try:
-        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
-            server.login(GMAIL_USER, GMAIL_APP_PASSWORD)
-            server.sendmail(GMAIL_USER, TO_EMAIL, msg.as_string())
-        audit("SUCCESS", "fireflies-agent", f"Email sent: {transcript_title}")
-        return f"✅ Emailed to {TO_EMAIL}"
+        app = msal.ConfidentialClientApplication(
+            AZURE_CLIENT_ID,
+            authority=f"https://login.microsoftonline.com/{AZURE_TENANT_ID}",
+            client_credential=AZURE_CLIENT_SECRET
+        )
+        result = app.acquire_token_for_client(scopes=["https://graph.microsoft.com/.default"])
+        token = result.get("access_token")
+        if not token:
+            raise Exception(f"Token acquisition failed: {result.get('error_description')}")
+
+        attachment_b64 = base64.b64encode(file_bytes).decode("utf-8")
+        payload = {
+            "message": {
+                "subject": f"Meeting Notes: {transcript_title} ({date_str})",
+                "body": {
+                    "contentType": "Text",
+                    "content": f"Meeting notes attached for:\n\n{transcript_title}\nDate: {date_str}"
+                },
+                "toRecipients": [{"emailAddress": {"address": TO_EMAIL}}],
+                "attachments": [{
+                    "@odata.type": "#microsoft.graph.fileAttachment",
+                    "name": filename,
+                    "contentType": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                    "contentBytes": attachment_b64
+                }]
+            }
+        }
+
+        headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
+        response = requests.post(
+            f"https://graph.microsoft.com/v1.0/users/{MS_USER_EMAIL}/sendMail",
+            headers=headers,
+            json=payload,
+            timeout=30
+        )
+
+        if response.status_code == 202:
+            audit("SUCCESS", "fireflies-agent", f"Email sent: {transcript_title}")
+            return f"✅ Emailed to {TO_EMAIL}"
+        else:
+            raise Exception(f"Graph API error {response.status_code}: {response.text[:200]}")
+
     except Exception as e:
         audit("ERROR", "fireflies-agent", f"Email failed: {e}")
         return f"❌ Email failed: {e}"
@@ -260,16 +291,20 @@ def run_transcript_pipeline(limit=5):
         detail = get_transcript_detail(t["id"])
         full_transcript = {**t, **(detail if detail and not detail.get("error") else {})}
 
-        # Save docx
-        filepath = save_transcript_docx(full_transcript)
+        # Save formatted notes docx to OneDrive/Meeting Notes
+        onedrive_url, docx_bytes, docx_filename = save_transcript_docx(full_transcript)
 
-        # Save to memory
+        # Save verbatim transcript to OneDrive/Meetings
+        save_transcript_to_onedrive(full_transcript)
+
+        # Save to local memory
         save_transcripts_to_memory([full_transcript])
 
-        # Email
-        email_result = send_transcript_email(filepath, title, date_str)
+        # Email formatted notes as attachment
+        email_result = send_transcript_email(docx_bytes, docx_filename, title, date_str)
 
-        results.append(f"📄 *{title}* ({date_str})\n   Saved: {filepath}\n   {email_result}")
+        saved_loc = onedrive_url or "OneDrive upload failed"
+        results.append(f"📄 *{title}* ({date_str})\n   Saved: {saved_loc}\n   {email_result}")
 
     return "\n\n".join(results)
 
