@@ -2,6 +2,7 @@ import os
 import requests
 import msal
 from datetime import datetime, timezone
+from pathlib import Path
 from dotenv import load_dotenv
 from llm_client import chat_with_fallback
 
@@ -12,6 +13,32 @@ AZURE_TENANT_ID = os.getenv("AZURE_TENANT_ID")
 AZURE_CLIENT_SECRET = os.getenv("AZURE_CLIENT_SECRET")
 MS_USER_EMAIL = os.getenv("MS_USER_EMAIL", "nfisher@peak10group.com")
 AUDIT_LOG = "/opt/clawbot/logs/audit.log"
+MEMORY_DIR = Path("/opt/clawbot/memory")
+DATA_DIR = Path("/opt/clawbot/data")
+
+
+def _read_file(path):
+    try:
+        if path.exists():
+            return path.read_text(encoding="utf-8", errors="ignore")
+    except Exception:
+        pass
+    return ""
+
+
+def get_shared_memory():
+    long_term = _read_file(MEMORY_DIR / "MEMORY.md")
+    profile = _read_file(DATA_DIR / "PROFILE.md")
+    today = datetime.now().strftime("%Y-%m-%d")
+    daily = _read_file(MEMORY_DIR / f"{today}.md")
+    parts = []
+    if profile:
+        parts.append("User Profile:\n" + profile)
+    if long_term:
+        parts.append("Long-Term Memory:\n" + long_term)
+    if daily:
+        parts.append("Today's Log:\n" + daily)
+    return "\n\n".join(parts)
 
 def audit(level, script, message):
     ts = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
