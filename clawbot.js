@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+require("dotenv").config({ path: "/root/.env" });
 const https = require("https");
 const readline = require("readline");
 const { exec } = require("child_process");
@@ -8,8 +9,8 @@ const os = require("os");
 const path = require("path");
 
 // ─── CONFIG ───────────────────────────────────────────────────────────────────
-const OPENAI_API_KEY = process.env.OPENAI_API_KEY || "YOUR_OPENAI_API_KEY_HERE";
-const MODEL = "gpt-4o";
+const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || "";
+const MODEL = "anthropic/claude-sonnet-4.6";
 
 // ─── TASK LIST (in-memory) ─────────────────────────────────────────────────────
 let tasks = [];
@@ -36,19 +37,21 @@ Commands Nate can use:
 For any other input, respond helpfully as a smart assistant.
 Always be concise, professional, and friendly.`;
 
-// ─── OPENAI API CALL ──────────────────────────────────────────────────────────
+// ─── OPENROUTER API CALL ──────────────────────────────────────────────────────
 function askOpenAI(messages) {
   return new Promise((resolve, reject) => {
     const body = JSON.stringify({ model: MODEL, messages, max_tokens: 1000 });
 
     const req = https.request(
       {
-        hostname: "api.openai.com",
-        path: "/v1/chat/completions",
+        hostname: "openrouter.ai",
+        path: "/api/v1/chat/completions",
         method: "POST",
+        family: 4,
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${OPENAI_API_KEY}`,
+          "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
+          "HTTP-Referer": "https://clawbot.peak10group.com",
           "Content-Length": Buffer.byteLength(body),
         },
       },
