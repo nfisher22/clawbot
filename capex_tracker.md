@@ -1,5 +1,5 @@
 # CapEx Project Tracker — Multifamily Portfolio
-**Last Updated:** March 25, 2026
+**Last Updated:** March 25, 2026 (rev. 1)
 **Portfolio Total Budget:** $720,000 | **Total Spent:** $243,500 | **Budget Remaining:** $476,500 | **Overall % Spent:** 33.8%
 
 ---
@@ -14,7 +14,7 @@
 | Executive House 808 Fire Unit | Executive House | Fire / Interior Restoration | $60,000 | $3,000 | $57,000 | ❌ NONE | — | May 1, 2026 | ❌ UNASSIGNED | 🔴 AT RISK | 5% | HIGH | Assign Owner's Rep immediately; hire GC this week; initiate MEP coordination | No OR, no GC — fire/life safety scope cannot sit unmanaged |
 | Executive House 803 | Executive House | Renovation | $15,000 | $4,000 | $11,000 | ❌ NONE | — | ❌ NONE | Stephen B | 🔴 AT RISK | 25% | MEDIUM | Stephen B: Hire GC and set hard completion date — plans submitted, no excuse for further delay | No contractor, no timeline |
 | Riverstone 309 | Riverstone | Interior — Kitchen & Bath | $15,000 | $0 | $15,000 | ❌ NONE | — | Apr 15, 2026 | Stephen B | 🔴 AT RISK | 0% | HIGH | Stephen B: Hire interior contractor this week — Apr 15 deadline at serious risk | $0 spent, no contractor, 21 days out |
-| Riverstone 409 | Riverstone | Interior — Kitchen & Bath | $15,000 | $0 | $15,000 | ❌ NONE | — | Apr 15, 2026 | Stephen B | ⚠ FLAGGED | 0% | HIGH | Stephen B: Confirm — is 409 a separate unit or duplicate entry of 309? If separate unit, hire contractor immediately | Noted as "Duplicate of 309" — NEEDS CLARIFICATION |
+| Riverstone 403 | Riverstone | Interior — Kitchen & Bath | $15,000 | $0 | $15,000 | ❌ NONE | — | Apr 15, 2026 | Stephen B | 🔴 AT RISK | 0% | HIGH | Stephen B: Hire interior contractor immediately — same urgency as Riverstone 309; Apr 15 is 21 days out | Separate unit confirmed; same scope as 309 |
 | Riverstone Steps | Riverstone | Exterior — Concrete Steps | $15,000 | $1,000 | $14,000 | ❌ NONE | — | May 1, 2026 | Stephen B | ⚠ AT RISK | 7% | MEDIUM | Stephen B: Hire concrete contractor; $1K likely mobilization/demo only | No contractor assigned |
 | Executive House Fire Panel | Executive House | Fire Panel System | $50,000 | $0 | $50,000 | Koorsen Fire | — | May 1, 2026 | Nate Fisher | ⬜ NOT STARTED | 0% | HIGH | Nate Fisher: Confirm Koorsen mobilization date and permit status — fire panel is life safety, no slippage acceptable | Vendor assigned; must confirm start |
 
@@ -44,8 +44,8 @@
 **Park Layne Roof — $100K / $5.5K Spent / No Contractor / May 1**
 - 37 days to May 1 with no roofing contractor. Typical roofing procurement takes 1–2 weeks. That leaves 3 weeks of actual work time. Possible but no margin. Award contract by April 1 or push timeline.
 
-**Riverstone 409 — ⚠ POSSIBLE DUPLICATE**
-- Flagged as "Duplicate of 309." If this is the same unit entered twice, remove it — $15K of phantom budget is a tracking problem. If it's Unit 409 (a distinct apartment), it has the same urgent issues as 309.
+**Riverstone 403 — Same urgency as Riverstone 309**
+- Confirmed as a separate unit with identical scope (Kitchen & Bath). $0 spent, no contractor, April 15 deadline 21 days out. Treat with same priority as 309 — Stephen B needs two contractors or one contractor who can run both units concurrently.
 
 ---
 
@@ -60,11 +60,11 @@
 | Executive House Fire Panel | $50,000 | $0 | $50,000 | 0% | Watch — vendor assigned but not started |
 | Executive House 803 | $15,000 | $4,000 | $11,000 | 26.7% | Manageable — needs contractor |
 | Riverstone 309 | $15,000 | $0 | $15,000 | 0% | At risk — no contractor, no spend |
-| Riverstone 409 | $15,000 | $0 | $15,000 | 0% | Flagged — possible duplicate |
+| Riverstone 403 | $15,000 | $0 | $15,000 | 0% | At risk — no contractor, Apr 15 deadline |
 | Riverstone Steps | $15,000 | $1,000 | $14,000 | 6.7% | Watch — no contractor |
 | **PORTFOLIO TOTAL** | **$720,000** | **$243,500** | **$476,500** | **33.8%** | $476.5K uncommitted across 9 projects |
 
-**Notable:** 6 of 9 projects have no contractor. Over $476K is effectively uncommitted. The April 15 deadline cluster (Park Layne Insurance, Riverstone 309, Riverstone 409) represents $130K of work with near-zero mobilization.
+**Notable:** 6 of 9 projects have no contractor. Over $476K is effectively uncommitted. The April 15 deadline cluster (Park Layne Insurance, Riverstone 309, Riverstone 403) represents $130K of work with near-zero mobilization.
 
 ---
 
@@ -74,7 +74,7 @@
 |---|---|---|---|---|---|
 | Park Layne Insurance | Apr 15 | 21 days | 0% | Yes (Sturgeon) | CRITICAL |
 | Riverstone 309 | Apr 15 | 21 days | 0% | No | CRITICAL |
-| Riverstone 409 | Apr 15 | 21 days | 0% | No | FLAGGED (duplicate?) |
+| Riverstone 403 | Apr 15 | 21 days | 0% | No | CRITICAL |
 | Park Layne Structural | Apr 15 | 21 days | 65.7% | Yes (Hart) | HIGH |
 | Park Layne Roof | May 1 | 37 days | 5.5% | No | HIGH |
 | Executive House 808 | May 1 | 37 days | 5% | No | HIGH |
@@ -103,7 +103,7 @@
 |---|---|---|
 | Park Layne Insurance | Call Sturgeon Contracting today; confirm start date in writing | TODAY |
 | Riverstone 309 | Award interior contractor; confirm Apr 15 is achievable or reset timeline | This week |
-| Riverstone 409 | Confirm: duplicate entry or separate unit 409? Resolve and update tracker | This week |
+| Riverstone 403 | Hire interior contractor immediately — same urgency as 309; confirm whether one contractor can run both units | This week |
 | Park Layne Roof | Solicit 3 roofing bids; award by Apr 1 | Apr 1 hard deadline |
 | Executive House 803 | Hire GC; set hard completion date; plans are done — no more delay | This week |
 | Riverstone Steps | Hire concrete contractor; provide mobilization date | This week |
@@ -122,9 +122,8 @@
 
 | Flag Type | Projects |
 |---|---|
-| No contractor | Park Layne Roof, EH 808, EH 803, Riverstone 309, Riverstone 409, Riverstone Steps |
+| No contractor | Park Layne Roof, EH 808, EH 803, Riverstone 309, Riverstone 403, Riverstone Steps |
 | No owner's rep | Executive House 808 |
 | No timeline | Executive House 803 |
-| Possible duplicate | Riverstone 409 |
 | Life safety scope unmanaged | Executive House 808, Executive House Fire Panel |
-| April 15 deadline at risk | Park Layne Insurance, Riverstone 309, Riverstone 409 |
+| April 15 deadline at risk | Park Layne Insurance, Riverstone 309, Riverstone 403 |
